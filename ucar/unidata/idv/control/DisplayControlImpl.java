@@ -156,6 +156,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
+import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -355,6 +356,7 @@ public abstract class DisplayControlImpl extends DisplayControlBase implements D
     /** is raster property */
     private boolean isRaster = false;
 
+    private JSplitPane wrappedMain;
 
     /**
      *  This is the main panel held in the window. We keep this around
@@ -1153,7 +1155,11 @@ public abstract class DisplayControlImpl extends DisplayControlBase implements D
 
         addToControlContext();
 
-
+        if (showNoteText) {
+            showNoteTextArea();
+        } else {
+            removeNoteTextArea();
+        }
 
         //Get the color table, range, etc.
         instantiateAttributes();
@@ -2406,12 +2412,12 @@ public abstract class DisplayControlImpl extends DisplayControlBase implements D
      * Used to relayout the gui mainPanel
      */
     protected void redoGuiLayout() {
-        if (mainPanel == null) {
+        if (wrappedMain == null) {
             return;
         }
-        mainPanel.invalidate();
-        mainPanel.validate();
-        JFrame frame = GuiUtils.getFrame(mainPanel);
+        wrappedMain.invalidate();
+        wrappedMain.validate();
+        JFrame frame = GuiUtils.getFrame(wrappedMain);
         if (frame != null) {
             frame.pack();
         }
@@ -2423,35 +2429,37 @@ public abstract class DisplayControlImpl extends DisplayControlBase implements D
      * Remove the noteText TextArea from the gui.
      */
     private void removeNoteTextArea() {
-        if (noteWrapper != null) {
-            mainPanel.remove(noteWrapper);
-            redoGuiLayout();
-        }
+//        if (noteWrapper != null) {
+//            mainPanel.remove(noteWrapper);
+//            redoGuiLayout();
+//        }
+        wrappedMain.setDividerLocation(1.0d);
     }
 
     /**
      * Create (if null) and add the note text TextArea into the gui
      */
     private void showNoteTextArea() {
-        if (noteTextArea == null) {
-            noteTextArea = new JTextArea(5, 30);
-            if (initNoteText != null) {
-                noteTextArea.setText(initNoteText);
-            }
-            JScrollPane sp =
-                new JScrollPane(
-                    noteTextArea,
-                    ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
-                    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-
-            JViewport vp = sp.getViewport();
-            vp.setViewSize(new Dimension(60, 30));
-            noteWrapper = GuiUtils.inset(sp, 4);
-        }
-        if (mainPanel != null) {
-            addNoteText(mainPanel, noteWrapper);
-            redoGuiLayout();
-        }
+//        if (noteTextArea == null) {
+//            noteTextArea = new JTextArea(5, 30);
+//            if (initNoteText != null) {
+//                noteTextArea.setText(initNoteText);
+//            }
+//            JScrollPane sp =
+//                new JScrollPane(
+//                    noteTextArea,
+//                    ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+//                    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+//
+//            JViewport vp = sp.getViewport();
+//            vp.setViewSize(new Dimension(60, 30));
+//            noteWrapper = GuiUtils.inset(sp, 4);
+//        }
+//        if (mainPanel != null) {
+//            addNoteText(mainPanel, noteWrapper);
+//            redoGuiLayout();
+//        }
+        wrappedMain.setDividerLocation(0.8d);
     }
 
 
@@ -4567,17 +4575,35 @@ public abstract class DisplayControlImpl extends DisplayControlBase implements D
             contents = doMakeContents();
         }
 
-
         mainPanel = GuiUtils.center(GuiUtils.inset(contents, 3));
-
-        if (showNoteText) {
-            showNoteTextArea();
+        
+        // TJJ Feb 2018 create Note Text panel up front now.
+        // Using split pane to show and hide
+        
+        noteTextArea = new JTextArea(5, 30);
+        if (initNoteText != null) {
+            noteTextArea.setText(initNoteText);
         }
+        JScrollPane sp =
+            new JScrollPane(
+                noteTextArea,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
+        JViewport vp = sp.getViewport();
+        vp.setViewSize(new Dimension(60, 30));
+        noteWrapper = GuiUtils.inset(sp, 4);
+        
+        wrappedMain = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        wrappedMain.setTopComponent(mainPanel);
+        wrappedMain.setBottomComponent(noteWrapper);
+        wrappedMain.setDividerLocation(1.0d);
+        wrappedMain.setOneTouchExpandable(true);
 
         //        outerContents = GuiUtils.topCenterBottom(doMakeMenuBar(), mainPanel, makeBottomButtons());
         DndImageButton dndBtn = new DndImageButton(this, "control");
         //        JComponent topPanel = GuiUtils.centerRight(doMakeMenuBar(),dndBtn);
-        outerContents = GuiUtils.topCenter(doMakeMenuBar(), mainPanel);
+        outerContents = GuiUtils.topCenter(doMakeMenuBar(), wrappedMain);
         //        outerContents = GuiUtils.topCenter(topPanel, mainPanel);
 
         ucar.unidata.util.Msg.translateTree(outerContents, true);
