@@ -28,70 +28,63 @@
 
 package edu.wisc.ssec.mcidasv.data.hydra;
 
+import static java.lang.Character.isDigit;
+import static java.lang.Integer.MAX_VALUE;
+import static java.lang.Integer.parseInt;
+
 import java.util.Comparator;
 
 /**
+ * Sorts NOAA format VIIRS variable names by band number.
+ * 
+ * <p>For example, ensures:<br/>
+ * 
+ * {@code All_Data/VIIRS-M2-SDR_All/Radiance}<br/>
+ * 
+ * appears before:<br/>
+ * 
+ * {@code All_Data/VIIRS-M16-SDR_All/Radiance}<br/></p>
+ * 
+ * <p>Using natural ordering, it will not, since the band numbers are
+ * not zero-padded.</p>
+ * 
  * @author tommyj
- * Sorts NOAA format VIIRS variable names. For example, ensures:
- * 
- * All_Data/VIIRS-M2-SDR_All/Radiance
- * 
- * appears before:
- * 
- * All_Data/VIIRS-M16-SDR_All/Radiance
- * 
- * Using natural ordering, it will not, since the band numbers are
- * not zero-padded.
- *
  */
-
-public class VIIRSSort implements Comparator<String> {
-
+public final class VIIRSSort implements Comparator<String> {
+    
+    private static final String VIIRS = "All_Data/VIIRS";
+    
     @Override
     public int compare(String v1, String v2) {
         int result = 0;
-        String band1 = null;
-        String band2 = null;
-        int index1 = -1;
-        int index2 = -1;
         
-        // Do the regular natural ordering check first
         if ((v1 != null) && (v2 != null)) {
-            
-            result = v1.compareTo(v2);
             
             // Assume caller is testing on NOAA-format VIIRS data,
             // but do some basic checks just in case.  If true,
             // apply a further filter based on Band token
             
-            if ((v1.contains("VIIRS")) && (v2.contains("VIIRS"))) {
+            if (v1.startsWith(VIIRS) && v2.startsWith(VIIRS)) {
                 
                 // pull band out of 1st variable name
-                index1 = v1.indexOf('-');
-                index2 = v1.indexOf('-', index1 + 1);
-                band1 = v1.substring(index1 + 1, index2);
-
+                int index1 = v1.indexOf('-');
+                int index2 = v1.indexOf('-', index1 + 1);
+                String band = v1.substring(index1 + 2, index2);
+                int b1 = isDigit(band.charAt(0)) ? parseInt(band) : MAX_VALUE;
+                
                 // pull band out of 2nd variable name
                 index1 = v2.indexOf('-');
                 index2 = v2.indexOf('-', index1 + 1);
-                band2 = v2.substring(index1 + 1, index2);
+                band = v2.substring(index1 + 2, index2);
+                int b2 = isDigit(band.charAt(0)) ? parseInt(band) : MAX_VALUE;
                 
-                if ((band1 != null) && (band2 != null)) {
-                    // zero pad if needed
-                    if (band1.length() == 2) {
-                        band1 = String.join("0", band1.substring(0, 1), band1.substring(1));
-                    }
-                    if (band2.length() == 2) {
-                        band2 = String.join("0", band2.substring(0, 1), band2.substring(1));
-                    }
-                }
-                
-                result = band1.compareTo(band2);
-                
+                result = Integer.compare(b1, b2);
+            } else {
+                // all we know is that one of these isn't VIIRS; so default to
+                // natural ordering
+                result = v1.compareTo(v2);
             }
         }
-        
         return result;
     }
-
 }
